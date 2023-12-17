@@ -1,28 +1,43 @@
 import sys
 import json
-
 import torch
 from transformers import BertForSequenceClassification, AutoTokenizer
 
-LABELS = ['Нейтральный', 'Позитивный', 'Негативный', 'Восторг', 'Страх', 'Злость', 'Отвращение']
+# Задаем метки для эмоциональных окрасов
+LABELS = ['Нейтральный эмоциональный окрас', 'Позитивный эмоциональный окрас', 'Негативный эмоциональный окрас', 'Восторг', 'Страх', 'Злость', 'Отвращение']
+
+# Загружаем токенизатор и модель для классификации эмоционального окраса
 tokenizer = AutoTokenizer.from_pretrained('Aniemore/rubert-tiny2-russian-emotion-detection')
 model = BertForSequenceClassification.from_pretrained('Aniemore/rubert-tiny2-russian-emotion-detection')
 
-def predict_emotion(text: str) -> str:
+def predict_emotion(texts: list) -> list:
     """
-        We take the input text, tokenize it, pass it through the model, and then return the predicted label
-        :param text: The text to be classified
-        :type text: str
-        :return: The predicted emotion
+    Принимает список текстов, токенизирует каждый, передает через модель
+    и возвращает список предсказанных эмоциональных окрасов.
+    
+    :param texts: Список текстов для классификации
+    :type texts: list of str
+    :return: Список предсказанных эмоциональных окрасов
     """
-    inputs = tokenizer(text, max_length=512, padding=True, truncation=True, return_tensors='pt')
+    # Токенизируем тексты и создаем пакет для передачи в модель
+    inputs = tokenizer(texts, max_length=512, padding=True, truncation=True, return_tensors='pt')
+    
+    # Пропускаем тексты через модель
     outputs = model(**inputs)
+    
+    # Применяем функцию Softmax и выбираем индекс с максимальной вероятностью
     predicted = torch.nn.functional.softmax(outputs.logits, dim=1)
     predicted = torch.argmax(predicted, dim=1).numpy()
-        
-    return LABELS[predicted[0]]
+    
+    # Возвращаем список предсказанных эмоциональных окрасов с учетом меток
+    return [LABELS[label] for label in predicted]
 
-if name == "main":
-    text = sys.argv[1:]
-    results = predict_emotion(text)
+if __name__ == "__main__":
+    # Получаем тексты из аргументов командной строки
+    texts = sys.argv[1:]
+    
+    # Запускаем функцию предсказания эмоциональных окрасов
+    results = predict_emotion(texts)
+    
+    # Выводим результат в формате JSON
     print(json.dumps(results))
